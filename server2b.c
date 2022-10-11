@@ -62,17 +62,19 @@ int main(){
     // printf("hello sent from server");
     
 
-    FILE *dataDump_file = fopen("serverDump.txt", "a");
 
-    if(dataDump_file == NULL){
-        perror("File open error");
-    }
 
     pid_t child_processId;
 
     while (1)
     {
-     
+
+        FILE *dataDump_file = fopen("serverDump.txt", "a+");
+
+        if(dataDump_file == NULL){
+            perror("File open error");
+        }
+
         //Accept
         socket_n = accept(serverfile_d, (struct sockaddr*)&addr, (socklen_t*)&addrlen);
 
@@ -82,49 +84,34 @@ int main(){
             exit(EXIT_FAILURE);
         }
 
-        // int temp1 = addr.sin_addr.s_addr;
-        // char temp2[1000] = inet_ntoa(addr.sin_addr);
-        // int temp3  = addr.sin_port;
-
-        // char abc[1000] = "Client connected with client id: %s IP address: %s and port number: %s\n",temp1 ,temp2 , temp3;
-
-        char temp4[10000];
-        strcpy(temp4, "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-
-
-
-        // fputs(dataDump_file, "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-        // fputs(abc,dataDump_file);
-
+        fprintf(dataDump_file, "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+        // rewind(dataDump_file);
+        
         printf("Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
 
         if ((child_processId = fork()) == 0)
         {
-            while (1)
-            {
+            int recevd = 0;
+            int valread;
 
-                int recevd = 0;
-                int valread;
+            for (int i = 0; i < 20; i++)
+            {        
+                valread = read(socket_n, &recevd , sizeof(int));
+                printf("received %d In server from client id: %d IP address: %s and port number: %d\n", recevd,addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+                
+                long a = factorial(recevd);
+                long* temp = &a;
+                send(socket_n, temp, sizeof(long), 0);
 
-                for (int i = 0; i < 20; i++)
-                {        
-                    valread = read(socket_n, &recevd , sizeof(int));
-                    printf("received %d In server from client id: %d IP address: %s and port number: %d\n", recevd,addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-                    
-                    long a = factorial(recevd);
-                    long* temp = &a;
-                    send(socket_n, temp, sizeof(long), 0);
-
-
-                    fprintf(dataDump_file,"received %d In server from client id: %d IP address: %s and port number: %d\n", recevd,addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-
-                    printf("sent %ld from server\n", *temp);
-                }
+                fprintf(dataDump_file,"received %d In server from client id: %d IP address: %s and port number: %d\n", recevd,addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+                
+                printf("sent %ld from server\n", *temp);
             }
+            rewind(dataDump_file);        
         }
+        fclose(dataDump_file);
     }
     
-    fclose(dataDump_file);
     close(socket_n);
     shutdown(serverfile_d, SHUT_RDWR);
 
