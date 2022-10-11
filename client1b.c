@@ -35,14 +35,6 @@ void *connection_handler(void *number){
         
     }
     
-    // int valread;
-    // char* hello = "Hello from client";
-    // char buffer[1024] = { 0 };
-    // send(soc, hello, strlen(hello), 0 );
-    // printf("Hello sendt to server\n");
-    // valread = read(soc, buffer, 1024);
-    // printf("%s\n",buffer);
-
     int valread;
     long recevd = 0;
     int i;

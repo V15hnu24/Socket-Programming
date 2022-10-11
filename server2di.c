@@ -15,6 +15,44 @@ long factorial(int n)
     return n * factorial(n - 1);
 }
 
+void *connection_handler(void *socket_addr){
+
+    int socket_n = *(int*)socket_addr;
+    struct sockaddr_in addr = *(struct sockaddr_in*)socket_addr;
+
+    FILE *dataDump_file = fopen("serverDump.txt", "a+");
+
+    if(dataDump_file == NULL){
+        perror("File open error");
+    }
+
+    // fprintf(dataDump_file, "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+    // rewind(dataDump_file);
+    
+    // printf("Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+
+    int recevd = 0;
+    int valread;
+
+    for (int i = 0; i < 20; i++)
+    {        
+        valread = read(socket_n, &recevd , sizeof(int));
+        // printf("received %d In server from client id: %d IP address: %s and port number: %d\n", recevd,addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+        
+        long a = factorial(recevd);
+        long* temp = &a;
+        send(socket_n, temp, sizeof(long), 0);
+
+        // fprintf(dataDump_file,"received %d In server from client id: %d IP address: %s and port number: %d\n", recevd,addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+        fprintf(dataDump_file,"sent %ld from server\n", *temp);
+        printf("sent %ld from server\n", *temp);
+    }
+    rewind(dataDump_file);        
+    fclose(dataDump_file);
+
+    return 0;
+}
+
 int main(){
     int serverfile_d, socket_n;
     struct sockaddr_in server_addr;
@@ -54,20 +92,14 @@ int main(){
     }
 
     printf("Server is listening\n");
-    
-
-    FILE *dataDump_file = fopen("serverDump.txt", "r+");
-
-    if(dataDump_file == NULL){
-        perror("File open error");
-    }
-    printf("Txt File opened\n");
 
     //Initializing the current fd set
     fd_set current_fd_set, ready_socket;
     FD_ZERO(&current_fd_set);
     FD_SET(serverfile_d, &current_fd_set);
     int max_fd = FD_SETSIZE;
+
+    int num =0;
 
     while (1)
     {
@@ -78,12 +110,14 @@ int main(){
             exit(EXIT_FAILURE);
         }
         
-        for (int i = 0; i < max_fd; i++)
+        for (int i = 0; i <max_fd; i++)
         {
             if (FD_ISSET(i, &ready_socket))
             {   
                 if (i == serverfile_d)
                 {
+                    num++;
+                    printf("Client %d connected\n", num);
                     //Accept
                     socket_n = accept(serverfile_d, (struct sockaddr*)&addr, (socklen_t*)&addrlen);
                     if (socket_n<0)
@@ -92,32 +126,27 @@ int main(){
                         exit(EXIT_FAILURE);
                     }
                     printf("Connection accepted\n");
-                    
-                    fprintf(dataDump_file, "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-                    rewind(dataDump_file);
 
                     FD_SET(socket_n, &current_fd_set);
-                }else{
-                    int recevd = 0;
-                    int valread;
-
-                    for (int i = 0; i < 20; i++)
-                    {        
-                        valread = read(socket_n, &recevd , sizeof(int));
-                        printf("received %d In server from client id: %d IP address: %s and port number: %d\n", recevd,addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-                        
-                        long a = factorial(recevd);
-                        long* temp = &a;
-                        send(socket_n, temp, sizeof(long), 0);
-
-
-                        fprintf(dataDump_file,"received %d In server from client id: %d IP address: %s and port number: %d\n", recevd,addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-                        rewind(dataDump_file);
-
-                        printf("sent %ld from server\n", *temp);
+                    // if (socket_n > max_fd)
+                    // {
+                    //     max_fd = socket_n;
+                    // }
+                    FILE *dataDump_file = fopen("serverDump.txt", "a+");
+                    if(dataDump_file == NULL){
+                        perror("File open error");
                     }
+                    printf("Txt File opened\n");
+
+                    fprintf(dataDump_file, "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), htons(addr.sin_port));
                     
-                    // close(socket_n);
+                    fclose(dataDump_file);
+
+                    printf( "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), htons(addr.sin_port));
+                    
+                }else{
+                    connection_handler((void*)&i);
+                    
                     FD_CLR(i, &current_fd_set);
                 }
                 // fclose(dataDump_file);

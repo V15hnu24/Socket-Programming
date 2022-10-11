@@ -6,7 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <pthread.h>
+#include <sys/poll.h>
 
 long factorial(int n)
 {
@@ -27,8 +27,8 @@ void *connection_handler(void *socket_addr){
         perror("File open error");
     }
 
-    fprintf(dataDump_file, "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-    rewind(dataDump_file);
+    // fprintf(dataDump_file, "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+    // rewind(dataDump_file);
     
     // printf("Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
 
@@ -50,9 +50,9 @@ void *connection_handler(void *socket_addr){
     }
     rewind(dataDump_file);        
     fclose(dataDump_file);
+
     return 0;
 }
-
 
 int main(){
     int serverfile_d, socket_n;
@@ -92,49 +92,70 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
-    // char buffer[1024] = { 0 };
-    // char* hello = "Hello from server";
-    // int valread;
-    // valread = read(socket_n, buffer, 1024);
-    // printf("%s\n", buffer);
-    // send(socket_n, hello, strlen(hello), 0);
-    // printf("hello sent from server");
+    printf("Server is listening\n");
 
-    pthread_t child_processId;
+    //Initializing the current fd set
+    nfds_t nfds = 0;
+    struct pollfd *pollfds;
+    int maxfds = 10, numfds = 0;
+
+    if ((pollfds = malloc(maxfds * sizeof(struct pollfd))) == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+    }
+    maxfds = 10;
+
+    pollfds[0].fd = serverfile_d;
+    pollfds[0].events = POLLIN;
+    pollfds->revents = 0;
+    numfds = 1;
+
+    int num =0;
 
     while (1)
     {
-        //Accepting the connection from client
-        socket_n = accept(serverfile_d, (struct sockaddr*)&addr, (socklen_t*)&addrlen);
-
-        if (socket_n<0)
-        {
-            perror("In accept");
+        nfds = numfds;
+        if (poll(pollfds, nfds, -1) == -1) {
+            perror("poll");
             exit(EXIT_FAILURE);
         }
 
-        // Opening a file to dump the data
-        FILE *dataDump_file = fopen("serverDump.txt", "a+");
-
-        if(dataDump_file == NULL){
-            perror("File open error");
-        }
-
-        //Writing to the txt file.
-        fprintf(dataDump_file, "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-        rewind(dataDump_file);
-
-        //Printing the client details to the console
-        printf( "Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
-
-        //Creating a thread for each client
-        if(pthread_create(&child_processId, NULL, connection_handler, (void*)&socket_n)){
-            perror("could not create thread");
-            return -1;
+        for (int fd = 0; fd < (nfds+1); fd++)
+        {
+            if (pollfds[fd].revents == 0)
+                continue;
+            
+            if (((pollfds + fd) -> revents & POLLIN) == POLLIN)
+            {
+                if (pollfds[fd].fd == serverfile_d)
+                {
+                    if ((socket_n = accept(serverfile_d, (struct sockaddr *)&addr, (socklen_t*)&addrlen)) < 0)
+                    {
+                        perror("In accept");
+                        exit(EXIT_FAILURE);
+                    }
+                    printf("Client connected with client id: %d IP address: %s and port number: %d\n",addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+                    if (numfds == maxfds) {
+                        maxfds *= 2;
+                        if ((pollfds = realloc(pollfds, maxfds * sizeof(struct pollfd))) == NULL) {
+                            perror("realloc");
+                            exit(EXIT_FAILURE);
+                        }
+                    }
+                    pollfds[numfds].fd = socket_n;
+                    pollfds[numfds].events = POLLIN;
+                    pollfds[numfds].revents = 0;
+                    numfds++;
+                }
+                else
+                {
+                    connection_handler(&addr);
+                }
+            }
+            
         }
     }
     
-    close(socket_n);
     shutdown(serverfile_d, SHUT_RDWR);
 
     return 0;

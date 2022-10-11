@@ -12,7 +12,7 @@ int main(){
     struct sockaddr_in server_addr;
     
     //Creating socket in client side
-    soc = socket(AF_INET, SOCK_STREAM, 0);
+    soc = socket(AF_INET, SOCK_DGRAM, 0);
     if(soc <0){
         printf("\n Client socket creation eroor \n");
         return -1;
