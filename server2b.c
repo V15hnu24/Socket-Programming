@@ -104,6 +104,7 @@ int main(){
                 send(socket_n, temp, sizeof(long), 0);
 
                 fprintf(dataDump_file,"received %d In server from client id: %d IP address: %s and port number: %d\n", recevd,addr.sin_addr.s_addr , inet_ntoa(addr.sin_addr), addr.sin_port);
+                // sleep(1);
                 
                 printf("sent %ld from server\n", *temp);
             }

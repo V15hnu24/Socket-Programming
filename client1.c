@@ -33,14 +33,8 @@ int main(){
         printf("\n Connection falied\n");
         return -1;
     }
-    
-    // int valread;
-    // char* hello = "Hello from client";
-    // char buffer[1024] = { 0 };
-    // send(soc, hello, strlen(hello), 0 );
-    // printf("Hello sendt to server\n");
-    // valread = read(soc, buffer, 1024);
-    // printf("%s\n",buffer);
+
+    printf("Connected to server\n");
 
     int valread;
     long recevd = 0;
